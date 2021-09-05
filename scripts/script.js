@@ -11,23 +11,43 @@ function generateColourInRedGreenIntervalByProportion(prop) {
 function setup() {
 	const ctx = document.getElementById('graph').getContext('2d')
 	const options = {
-		type: 'bar',
+		type: 'scatter',
 		data: {
-			labels: orderedData.map(item => item.localName),
 			datasets: [
 				{
-					label: 'Percent Fully Immunized',
-					data: orderedData.map(item => item.percentFullyImmunized),
+					label: 'Health Regions',
+					data: orderedData.map(item => ({x: item.population,  y: item.percentFullyImmunized, label: item.localName } )),
 					backgroundColor: orderedData.map(item => generateColourInRedGreenIntervalByProportion(item.percentFullyImmunized / 100))
 				}
 			]
 		},
 		options: {
+			scales: {
+				x: {
+					type: 'linear',
+					title: {
+						display: true,
+						text: 'Population',
+					}
+				}, 
+				y: {
+					type: 'linear',
+					title: {
+						display: true,
+						text: 'Percentage Fully Vaccinated',
+					}
+				}
+			},
 			plugins: {
 				title: {
 					display: true,
 					text: 'Percent Vaccination for Alberta Regions',
 				},
+				tooltip: {
+					callbacks: {
+						label: (context) => context.raw.label ? context.raw.label : '',
+					}
+				}
 			},
 		},
 	};
