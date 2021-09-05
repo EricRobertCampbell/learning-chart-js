@@ -9,6 +9,18 @@
 	</head>
 	<body>
 		<h1>An Introduction to Chart.js</h1>
+		<label>
+			Select the confidence interval:&nbsp;
+			<select name="confidence-interval" id="confidence-interval-select" >
+				<option value="" selected>(None)</option>
+				<option value="0.5">50%</option>
+				<option value="0.75">75%</option>
+				<option value="0.9">90%</option>
+				<option value="0.95">95%</option>
+				<option value="0.99">99%</option>
+				<option value="0.999">99.9%</option>
+			</select>
+		</label>
 		<canvas id="graph"></canvas>
 	</body>
 </html>

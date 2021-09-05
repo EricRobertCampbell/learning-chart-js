@@ -4,21 +4,132 @@ const condensedData =
 
 const orderedData = condensedData.sort((a, b) => a.percentFullyImmunized - b.percentFullyImmunized)
 
+const totalPopulation = condensedData.map(item => item.population).reduce((sum, num) => sum + num, 0)
+const minPop = Math.min(...condensedData.map(item => item.population))
+const maxPop = Math.max(...condensedData.map(item => item.population))
+const averageVaccinationRate = condensedData.reduce(( mean, item ) => mean + item.population / totalPopulation * item.percentFullyImmunized, 0)
+
+let chart;
+
+/**
+ * Run a simulation of n binomial trials with probability p; return k, the number of successes
+ */
+function binomialRun(n, p) {
+	let k = 0;
+	for (let i = 0; i < n; i++) {
+		if (Math.random() < p) {
+			k++;
+		}
+	}
+	return k;
+}
+
+/**
+ * Find the numbers a and b such that in the provided array, ci% of the values are in the range [a, b]
+ */
+function empiricalConfidenceInterval(arr, ci) {
+	// first ensure that the list is sorted
+	arr = arr.sort((a, b) => a - b);
+	const remainingPercent = (1 - ci) / 2;
+	const distance = Math.floor(arr.length * remainingPercent);
+	const lower = arr[Math.max( distance - 1, 0 )];
+	const upper = arr[Math.min( arr.length - distance - 1, arr.length - 1 )];
+	return [lower, upper];
+}
+
+/**
+ * Run a Monte Carlo simulation of n binomial trials with probability p; run numTrial trials
+ */
+function runMonteCarloTrial(numTrials, n, p) {
+	return Array(numTrials)
+		.fill(0)
+		.map((_) => binomialRun(n, p));
+}
+
+function generateConfidencePlotData(ci, average) {
+	let ns = [
+		10,
+		100,
+		500,
+		1000,
+		2000,
+		3000,
+		4000,
+		5000,
+		6000,
+		7000,
+		8000,
+		9000,
+		10000,
+		120000,
+		134400,
+	];
+
+	const lowerData = [];
+	const upperData = [];
+
+	ns.forEach((n) => {
+		const [lowerNumber, upperNumber] = empiricalConfidenceInterval(
+			runMonteCarloTrial(1000, n, average / 100),
+			ci
+		);
+		lowerData.push({ x: n, y: (lowerNumber / n) * 100 });
+		upperData.push({ x: n, y: (upperNumber / n) * 100 });
+	});
+	return [lowerData, upperData]
+}
+
 function generateColourInRedGreenIntervalByProportion(prop) {
 	return `rgb(255, ${255 * prop}, 0)`;
 }
 
+function updateChart(chart, ci, average) {
+	const [upperData, lowerData] = ci === 0 ? [[], []] : generateConfidencePlotData(ci, average);
+	chart.data.datasets[2].data = lowerData;
+	chart.data.datasets[3].data = upperData;
+	chart.update()
+}
+
+function handleChange(e) {
+	const newCi = Number(e.target.value)
+	updateChart(chart, newCi, averageVaccinationRate)
+}
+
 function setup() {
 	const ctx = document.getElementById('graph').getContext('2d')
+
+	document.getElementById('confidence-interval-select').onchange = handleChange
+
 	const options = {
-		type: 'scatter',
 		data: {
 			datasets: [
 				{
+					type: 'scatter',
 					label: 'Health Regions',
 					data: orderedData.map(item => ({x: item.population,  y: item.percentFullyImmunized, label: item.localName } )),
 					backgroundColor: orderedData.map(item => generateColourInRedGreenIntervalByProportion(item.percentFullyImmunized / 100))
-				}
+				},
+				{
+					type: 'line',
+					label: 'Average Vaccination Rate',
+					data: [{x: minPop, y: averageVaccinationRate}, {x: maxPop, y: averageVaccinationRate}],
+					borderColor: 'blue',
+					pointRadius: 0,
+				},
+				{
+					type: 'line',
+					label: 'Lower Confidence',
+					data: [],
+					borderColor: 'black',
+					pointRadius: 0,
+				},
+				{
+					type: 'line',
+					label: 'Upper Confidence',
+					data:[],
+					borderColor: 'black',
+					pointRadius: 0,
+				},
 			]
 		},
 		options: {
@@ -32,6 +143,8 @@ function setup() {
 				}, 
 				y: {
 					type: 'linear',
+					min: 0,
+					max: 100,
 					title: {
 						display: true,
 						text: 'Percentage Fully Vaccinated',
@@ -51,7 +164,7 @@ function setup() {
 			},
 		},
 	};
-	const chart = new Chart(ctx, options)
+	chart = new Chart(ctx, options)
 }
 
 window.onload = setup
